@@ -7,8 +7,10 @@ The service is on `10.8.0.10:4444`.
 ```
 ./port_forward -a 10.8.0.10:4444 -P 1000
 ```
-
-
+You can remove the rules with
+```
+./port_forward -r 10.8.0.10:4444 -P 1000
+```
 
 # Arguments
 -a [addr]:[port] append rules for NAT device's [addr] and [port]  
