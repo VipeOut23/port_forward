@@ -15,6 +15,7 @@ You can remove the rules with
 # Arguments
 -a [addr]:[port] append rules for NAT device's [addr] and [port]  
 -r [addr]:[port] remove rules (all arguments must be the same as they were, when adding the rule)  
+-p [proto] tcp or udp (default: tcp)  
 -P [port] port on the NAT device ("from_port") Note: If unset, use the same port as the NAT client  
 -g [addr] set the gateway used by the NAT client (if empty, this script tries to guess)  
 -d dry run, print commands to stdout  

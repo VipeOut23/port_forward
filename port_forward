@@ -6,6 +6,7 @@ print_help() {
 
 	-a [addr]:[port] append rules for NAT device's [addr] and [port]
 	-r [addr]:[port] remove rules (all arguments must be the same as they were, when adding the rule)
+	-p [proto] tcp or udp (default: tcp)
 	-P [port] port on the NAT device ("from_port") Note: If unset, use the same port as the NAT client
 	-g [addr] set the gateway used by the NAT client (if empty, this script tries to guess)
 	-d dry run, print commands to stdout
@@ -16,7 +17,7 @@ print_help() {
 
 }
 
-while getopts "a:r:P:g:dh-:" opt; do
+while getopts "a:r:P:g:dp:h-:" opt; do
 	case $opt in
 		-)
 			OPTNAME=${OPTARG%=*}
@@ -53,6 +54,11 @@ while getopts "a:r:P:g:dh-:" opt; do
 		d)
 			dry_run=true
 			;;
+		u)
+			use_udp=true
+			;;
+		p)
+			proto=$OPTARG
 		h)
 			print_help
 			;;
@@ -73,17 +79,20 @@ fi
 
 [ -z $from_port ] && from_port=$to_port
 
+[ -t $proto ] && proto="tcp"
+
+
 if [ "$append" = true ]; then
 	CHAIN="-A PREROUTING"
 	[ -n "$pre_index" ] && CHAIN="-I PREROUTING $pre_index"
 	
-	CMD_1="iptables -t nat $CHAIN -p tcp --dport $from_port -j DNAT --to-dest $dest:$to_port"
+	CMD_1="iptables -t nat $CHAIN -p $proto --dport $from_port -j DNAT --to-dest $dest:$to_port"
 
 
 	CHAIN="-A POSTROUTING"
 	[ -n "$post_index" ] && CHAIN="-I POSTROUTING $post_index"
 
-	CMD_2="iptables -t nat $CHAIN -d $dest -p tcp --dport $to_port -j SNAT --to-source $gateway"
+	CMD_2="iptables -t nat $CHAIN -d $dest -p $proto --dport $to_port -j SNAT --to-source $gateway"
 
 	if [ "$dry_run" = true ]; then
 		echo $CMD_1
@@ -98,8 +107,8 @@ if [ "$append" = true ]; then
 fi
 
 if [ "$remove" = true ]; then
-	CMD_1="iptables -t nat -D PREROUTING -p tcp --dport $from_port -j DNAT --to-dest $dest:$to_port"
-	CMD_2="iptables -t nat -D POSTROUTING -d $dest -p tcp --dport $to_port -j SNAT --to-source $gateway"
+	CMD_1="iptables -t nat -D PREROUTING -p $proto --dport $from_port -j DNAT --to-dest $dest:$to_port"
+	CMD_2="iptables -t nat -D POSTROUTING -d $dest -p $proto --dport $to_port -j SNAT --to-source $gateway"
 
 	if [ "$dry_run" = true ]; then
 		echo $CMD_1
