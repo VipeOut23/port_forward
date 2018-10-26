@@ -2,8 +2,8 @@
 This little script is used to quickly setup firewall rules (iptables) to forward ports from a machine to another one in a subnet.
 
 # Basic example
-You have your server at $example.org$ and want to make a service inside a private network available at $example.org:1000$.
-The service is on $10.8.0.10:4444$.
+You have your server at `example.org` and want to make a service inside a private network available at `example.org:1000`.
+The service is on `10.8.0.10:4444`.
 ```
 ./port_forward -a 10.8.0.10:4444 -P 1000
 ```
