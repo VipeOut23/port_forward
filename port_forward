@@ -54,11 +54,9 @@ while getopts "a:r:P:g:dp:h-:" opt; do
 		d)
 			dry_run=true
 			;;
-		u)
-			use_udp=true
-			;;
 		p)
 			proto=$OPTARG
+			;;
 		h)
 			print_help
 			;;
