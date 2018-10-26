@@ -1,0 +1,114 @@
+#!/bin/bash
+
+print_help() {
+	cat <<-EOF
+	Add firewall rules for a source-port NAT
+
+	-a [addr]:[port] append rules for NAT device's [addr] and [port]
+	-r [addr]:[port] remove rules (all arguments must be the same as they were, when adding the rule)
+	-P [port] port on the NAT device ("from_port") Note: If unset, use the same port as the NAT client
+	-g [addr] set the gateway used by the NAT client (if empty, this script tries to guess)
+	-d dry run, print commands to stdout
+	--post-index=[val] the value used with iptables "-I" argument (for the POSTROUTING chain)
+	--pre-index=[val] the value used with iptables "-I" argument (for the PREROUTING chain)
+	-h|--help you already know :)
+	EOF
+
+}
+
+while getopts "a:r:P:g:dh-:" opt; do
+	case $opt in
+		-)
+			OPTNAME=${OPTARG%=*}
+			OPTVAL=${OPTARG#*=}
+			case "$OPTNAME" in
+				post-index)
+					post_index=$OPTVAL
+					;;
+				pre-index)
+					pre_index=$OPTVAL
+					;;
+				help)
+					print_help
+					;;
+			esac
+			;;
+
+		a)
+			append=true
+			dest=${OPTARG%:*}
+			to_port=${OPTARG##*:}
+			;;
+		r)
+			remove=true
+			dest=${OPTARG%:*}
+			to_port=${OPTARG##*:}
+			;;
+		P)
+			from_port=$OPTARG
+			;;
+		g)
+			gateway=$OPTARG
+			;;
+		d)
+			dry_run=true
+			;;
+		h)
+			print_help
+			;;
+		:)
+			echo "\"$OPTARG\" requires an argument.">&2
+			exit 1
+			;;
+	esac
+done
+
+
+if [ "$append" = true ] && [ "$remove" = true ]; then
+	echo "Cannot append and remove!"
+	exit 2
+fi
+
+[ -z $gateway ] && gateway=${dest%.*}.1
+
+[ -z $from_port ] && from_port=$to_port
+
+if [ "$append" = true ]; then
+	CHAIN="-A PREROUTING"
+	[ -n "$pre_index" ] && CHAIN="-I PREROUTING $pre_index"
+	
+	CMD_1="iptables -t nat $CHAIN -p tcp --dport $from_port -j DNAT --to-dest $dest:$to_port"
+
+
+	CHAIN="-A POSTROUTING"
+	[ -n "$post_index" ] && CHAIN="-I POSTROUTING $post_index"
+
+	CMD_2="iptables -t nat $CHAIN -d $dest -p tcp --dport $to_port -j SNAT --to-source $gateway"
+
+	if [ "$dry_run" = true ]; then
+		echo $CMD_1
+		echo $CMD_2
+	elif [ "$(whoami)" != "root" ]; then
+		echo "You must be root!"
+		exit 1
+	else
+		eval $CMD_1
+		eval $CMD_2
+	fi
+fi
+
+if [ "$remove" = true ]; then
+	CMD_1="iptables -t nat -D PREROUTING -p tcp --dport $from_port -j DNAT --to-dest $dest:$to_port"
+	CMD_2="iptables -t nat -D POSTROUTING -d $dest -p tcp --dport $to_port -j SNAT --to-source $gateway"
+
+	if [ "$dry_run" = true ]; then
+		echo $CMD_1
+		echo $CMD_2
+	elif [ "$(whoami)" != "root" ]; then
+		echo "You must be root!"
+		exit 1
+	else
+		eval $CMD_1
+		eval $CMD_2
+	fi
+fi
